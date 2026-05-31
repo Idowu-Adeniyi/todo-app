@@ -4,10 +4,13 @@
   "description": "Todo app backend API ",
   "license": "ISC",
   "author": "Idowu Adeniyi",
-  "type": "commonjs",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }
