@@ -31,7 +31,7 @@ app.get("/api/todos/:id", (req, res) => {
     const todoId = parseInt(req.params.id); 
 
     //Search your database array for that specific item
-    const foundTodo = todos.find(todo => todo.id === todoId);
+    const foundTodo = todos.find(todo => todo.id === todoId); //implicit arrow fuction
 
     //Send it if found , or give 404 error message if doesnt exist
     if(foundTodo){
@@ -40,9 +40,8 @@ app.get("/api/todos/:id", (req, res) => {
         res.status(404).json({error: "Todo item not found"});
     }
 });
-
-
 })
+
 //CREAT A TODO
 app.post("/api/todos", (req, res) => {
     const newTodo = {
@@ -54,24 +53,47 @@ app.post("/api/todos", (req, res) => {
     res.status(201).json(newTodo);
 })
 
-
-
-
-
-
 //Update
-app.put("/user/angela", (req, res) => {
-    res.sendStatus(200);
-})
+app.put("/api/todos/:id", (req, res) => {
+    const todoId =  parseInt(req.params.id);
+    const todo = todos.find((todo) => {
+        return todo.id === todoId;  //explicitly using the return key here
+    });
 
-// Update partically
-app.patch("/user/angela", (req, res) => {
-    res.sendStatus(200);
+    if(!todo){
+        return res.status(404).json({error: "Todo item not found"})
+    }
+
+    // Update the task name if the user provided a new one
+    if(req.body.task !== undefined){
+        todo.task = req.body.task;
+    }
+
+    //update the completed status if the user proived a new one
+    if(req.body.completed !== undefined){
+        todo.completed = req.body.completed;
+    }
+
+    // Send back the newly updated todo item
+    res.json(todo);
 })
 
 //Delete
-app.delete("/user/angela", (req, res) => {
-    res.sendStatus(200);
+app.delete("/api/todos/:id", (req, res) => {
+    const todoId = parseInt(req.params.id);
+    const todoIndex = todos.findIndex((todo) => {
+        return todo.id === todoId
+    })
+
+    //Error check
+    if(todoIndex === -1) {
+        return res.status(404).json({error: `Todo with ID ${todoId} not found`});
+    }
+    // Go to the slot positio and delete exactly 1 item
+    todos.splice(todoIndex, 1);
+
+    //send successful message if deleted.
+    res.json({message: `Todo ${todoId} deleted successfully`});
 })
 
 
