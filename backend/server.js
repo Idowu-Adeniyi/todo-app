@@ -1,4 +1,6 @@
 import express from "express";
+import cors from "cors";
+import pool from "./db.js"
 // import bodyParser from "body-parser";
 // import {join, dirname} from "path"
 // import { fileURLToPath } from "url";
@@ -6,24 +8,32 @@ import express from "express";
 //set your file path
 // const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.use(cors());
+app.use(express.json());
 const port = process.env.PORT || 3000
 
 
-app.use(express.json());
+
 // app.use(bodyParser.urlencoded({extended:true}));
 
 
 
-let todos = [
-    {id:1, task: "Learn Express JSON APIs", completed: false },
-    {id:2, task: "Test CRUD routes in Postman", completed: false }
-];
+// let todos = [
+//     {id:1, task: "Learn Express JSON APIs", completed: false },
+//     {id:2, task: "Test CRUD routes in Postman", completed: false }
+// ];
 
 
 // GET ALL TODOS
-app.get("/api/todos", (req, res) => {
+app.get("/api/todos", async (req, res) => {
     //   res.sendFile(join(__dirname, "..",  "/frontend/index.html"));
-    res.json(todos);
+    try{
+        const result = await pool.query("SELECT * FROM todos ORDER BY id ASC");
+        res.json(result.rows);
+    }catch (err) {
+        res.status(500).send("Server Error");
+    }
+    
 
 
     // GET A SINGLE TODO BY ID
