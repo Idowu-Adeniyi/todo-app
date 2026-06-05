@@ -1,115 +1,114 @@
 import express from "express";
 import cors from "cors";
 import pool from "./db.js"
-// import bodyParser from "body-parser";
-// import {join, dirname} from "path"
-// import { fileURLToPath } from "url";
 
-//set your file path
-// const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(cors());
 app.use(express.json());
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3000;
 
-
-
-// app.use(bodyParser.urlencoded({extended:true}));
-
-
-
-// let todos = [
-//     {id:1, task: "Learn Express JSON APIs", completed: false },
-//     {id:2, task: "Test CRUD routes in Postman", completed: false }
-// ];
 
 
 // GET ALL TODOS
 app.get("/api/todos", async (req, res) => {
-    //   res.sendFile(join(__dirname, "..",  "/frontend/index.html"));
     try{
-        const result = await pool.query("SELECT * FROM todos ORDER BY id ASC");
-        res.json(result.rows);
-    }catch (err) {
-        res.status(500).send("Server Error");
-    }
-    
+        const allTodos = await pool.query("SELECT * FROM todos ORDER BY id ASC");
+        res.status(200).json(allTodos.rows);
+    }catch (error) {
+        console.error(error.message)
+        res.status(500).send({message: "Server Error"});
+    } 
+})
+
 
 
     // GET A SINGLE TODO BY ID
-app.get("/api/todos/:id", (req, res) => {
-    const todoId = parseInt(req.params.id); 
+app.get("/api/todos/:id", async (req, res) => {
+    try {
+        const todoId = parseInt(req.params.id); 
+        const getTodo = await pool.query("SELECT * FROM todos WHERE id = $1", [todoId]); 
 
-    //Search your database array for that specific item
-    const foundTodo = todos.find(todo => todo.id === todoId); //implicit arrow fuction
-
-    //Send it if found , or give 404 error message if doesnt exist
-    if(foundTodo){
-        res.json(foundTodo);
-    }else {
-        res.status(404).json({error: "Todo item not found"});
+// VALIDATE EXISTENCE (Check the rows array inside getTodo)
+    if (getTodo.rows.length === 0) {
+      return res.status(404).json({ message: "Todo not found" });
     }
+// RESPOND (Send back the item found at index 0)
+    res.status(200).json(getTodo.rows[0]);
+    }catch (error) {
+       console.error(error.message);
+       res.status(500).json({ message: "Server error" });
+  }
 });
-})
+
+
 
 //CREAT A TODO
-app.post("/api/todos", (req, res) => {
-    const newTodo = {
-        id: todos.length + 1,
-        task: req.body.task,   // Pulls from JSON request body
-        completed: false
-    };
-    todos.push(newTodo);
-    res.status(201).json(newTodo);
-})
-
-//Update
-app.put("/api/todos/:id", (req, res) => {
-    const todoId =  parseInt(req.params.id);
-    const todo = todos.find((todo) => {
-        return todo.id === todoId;  //explicitly using the return key here
-    });
-
-    if(!todo){
-        return res.status(404).json({error: "Todo item not found"})
+app.post("/api/todos", async (req, res) => { 
+   try {
+       const { task, completed } = req.body;
+    //  VALIDATE If field is empty 
+    if (task === "") {
+       return res.status(400).json({ message: "Task cannot be empty" }); 
     }
+       const newTodo = await pool.query("INSERT INTO todos (task, completed) VALUES ($1, $2) RETURNING *", [task, completed]);
+       return res.status(201).json(newTodo.rows[0]);
+    }catch (error) {
+       console.error(error.message); 
+       res.status(500).json({ message: "Server Error" });
+  }
+});
 
-    // Update the task name if the user provided a new one
-    if(req.body.task !== undefined){
-        todo.task = req.body.task;
+
+
+//Update Todo
+app.put('/api/todos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { task } = req.body; 
+    // VALIDATE INPUT: Check right here BEFORE calling the database.
+    if (!task) {
+        return res.status(400).json({ message: "Task cannot be empty." });
     }
-
-    //update the completed status if the user proived a new one
-    if(req.body.completed !== undefined){
-        todo.completed = req.body.completed;
+    // EXECUTE: Safe to update now
+        const updateTodo = await pool.query("UPDATE todos SET task = $1 WHERE id = $2 RETURNING *",[task, id]);
+    //  VALIDATE EXISTENCE: Did ID actually exist?
+    
+    if (updateTodo.rows.length === 0) {
+        return res.status(404).json({ message: "Todo not found!" });
     }
+    //  RESPOND: Success messsage to user
+       res.status(200).json({ message: "Todo was updated!" });
+     }catch (error) {
+        console.error(error.message);
+        res.status(500).json({ error: "Server error" });
+  }
+});
 
-    // Send back the newly updated todo item
-    res.json(todo);
-})
 
 //Delete
-app.delete("/api/todos/:id", (req, res) => {
-    const todoId = parseInt(req.params.id);
-    const todoIndex = todos.findIndex((todo) => {
-        return todo.id === todoId
-    })
+app.delete('/api/todos/:id', async (req, res) => {
+  try {
+      const { id } = req.params;
+    // EXECUTE: Ask Postgres to delete it and return what it deleted
+      const deleteTodo = await pool.query("DELETE FROM todos WHERE id = $1 RETURNING *", [id]);
 
-    //Error check
-    if(todoIndex === -1) {
-        return res.status(404).json({error: `Todo with ID ${todoId} not found`});
+    // VALIDATE: Check if that ID exists and if not, server stops there
+    if (deleteTodo.rows.length === 0) {
+        return res.status(404).json({ message: "Todo not found." });
     }
-    // Go to the slot positio and delete exactly 1 item
-    todos.splice(todoIndex, 1);
 
-    //send successful message if deleted.
-    res.json({message: `Todo ${todoId} deleted successfully`});
-})
+    // RESPOND: It existed, it's deleted, send success message
+       res.status(200).json({ message: "Todo was successfully deleted!" });
+    }catch (error) {
+       console.error(error.message);
+       res.status(500).json({ error: "Server error" });
+  }
+});
 
 
 //Listen to the server
 app.listen(port, () => {
-    console.log(`server is running on localhost:${port}`)
+    console.log(`server is running on port:${port}`)
 })
 
 
