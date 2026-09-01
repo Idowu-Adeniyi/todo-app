@@ -5,7 +5,7 @@ import pool from "./db.js"
 
 
 const app = express();
-app.use(cors());
+app.use(cors()); // OR app.use(cors({origin: "http://localhost:5173"}));
 app.use(express.json());
 const port = process.env.PORT || 3000;
 
@@ -49,7 +49,7 @@ app.post("/api/todos", async (req, res) => {
    try {
        const { task, completed } = req.body;
     //  VALIDATE If field is empty 
-    if (task === "") {
+    if (!task || task.trim() === "") {
        return res.status(400).json({ message: "Task cannot be empty" }); 
     }
        const newTodo = await pool.query("INSERT INTO todos (task, completed) VALUES ($1, $2) RETURNING *", [task, completed]);
@@ -68,7 +68,7 @@ app.put('/api/todos/:id', async (req, res) => {
         const { id } = req.params;
         const { task } = req.body; 
     // VALIDATE INPUT: Check right here BEFORE calling the database.
-    if (!task) {
+    if (!task || task.trim() === "") {
         return res.status(400).json({ message: "Task cannot be empty." });
     }
     // EXECUTE: Safe to update now
