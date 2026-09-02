@@ -7,6 +7,7 @@ import pool from "./db.js"
 const app = express();
 app.use(cors()); // OR app.use(cors({origin: "http://localhost:5173"}));
 app.use(express.json());
+// app.use(express.urlencoded({ extended: true })) // For HTML Web Forms
 const port = process.env.PORT || 3000;
 
 
@@ -66,13 +67,14 @@ app.post("/api/todos", async (req, res) => {
 app.put('/api/todos/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { task } = req.body; 
+        const { task, completed } = req.body; 
+        
     // VALIDATE INPUT: Check right here BEFORE calling the database.
     if (!task || task.trim() === "") {
         return res.status(400).json({ message: "Task cannot be empty." });
     }
     // EXECUTE: Safe to update now
-        const updateTodo = await pool.query("UPDATE todos SET task = $1 WHERE id = $2 RETURNING *",[task, id]);
+        const updateTodo = await pool.query("UPDATE todos SET task = $1, completed = $2 WHERE id = $3 RETURNING *",[task,completed, id]);
     //  VALIDATE EXISTENCE: Did ID actually exist?
     
     if (updateTodo.rows.length === 0) {
@@ -110,7 +112,7 @@ app.delete('/api/todos/:id', async (req, res) => {
 
 //Listen to the server
 app.listen(port, () => {
-    console.log(`server is running on port:${port}`)
+    console.log(`server is running on http//localhost:${port}`)
 })
 
 
